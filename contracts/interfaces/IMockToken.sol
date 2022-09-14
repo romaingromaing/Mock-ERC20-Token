@@ -2,23 +2,25 @@
 
 pragma solidity ^0.8.0;
 
-interface IMockToken.sol {
+interface IMockToken {
     
-    function mint(address to, uint256 amount) public {}
+    function mint(address to, uint256 amount) external;
 
     //////////////////////
     // Getter Funcitons //
     //////////////////////
 
-    function getMaxSupply() view returns (uint256) {}
+    function getMaxSupply() external view returns (uint256);
 
-    function getInitialSupply() public view returns (uint256) {}
+    function getInitialSupply() external view returns (uint256);
 
-    function getCurrentSupply() public view returns (uint256) {}
+    function getCurrentSupply() external view returns (uint256);
 
-    function getCirculatingSupply() public view returns (uint256) {}
+    function getCirculatingSupply() external view returns (uint256);
 
-    function getOwner() public view returns (address) {} 
+    function getOwner() external view returns (address);
     
-    function getBalance() public view returns (uint256) {}
+    function getBalance() external view returns (uint256);
+
+    function getAllowance(address owner, address spender) external view returns (uint256);
 }

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol"
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract MockToken is ERC20, Ownable {
 
@@ -15,14 +15,14 @@ contract MockToken is ERC20, Ownable {
     //uint256 private currentSupply; //this may actually be available in ERC20.sol as _totalSupply
     uint256 private circulatingSupply;
 
-    uint256 private initialStakingAPR = 69%
+    uint256 private initialStakingAPR = 69; //not sure if this is even something I need - it's going to vary based on proportion of staked tokens
 
     constructor(uint256 _initialSupply) ERC20("MockToken", "MOCK") {
         INITIAL_SUPPLY = _initialSupply;
         
         _mint(address(this), INITIAL_SUPPLY); //mints initial supply. Currently have set to mint tokens to the address of the contract, but may change that. Could potentially use a separate contract to hold tokens and handle airdrop, but not sure yet
 
-        circulatingSupply = _totalSupply - balanceOf(address(this)); //should be zero at time of deployment
+        circulatingSupply = totalSupply() - balanceOf(address(this)); //should be zero at time of deployment
     }
 
     function mint(address to, uint256 amount) public onlyOwner {
@@ -34,7 +34,7 @@ contract MockToken is ERC20, Ownable {
     // Getter Funcitons //
     //////////////////////
 
-    function getMaxSupply() view returns (uint256) {
+    function getMaxSupply() public pure returns (uint256) {
         return MAX_SUPPLY;
     }
 
@@ -43,7 +43,7 @@ contract MockToken is ERC20, Ownable {
     }
 
     function getCurrentSupply() public view returns (uint256) {
-        return _totalSupply;
+        return totalSupply();
     }
 
     function getCirculatingSupply() public view returns (uint256) { 
