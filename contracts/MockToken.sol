@@ -13,22 +13,34 @@ contract MockToken is ERC20, Ownable {
     uint256 private constant MAX_SUPPLY = 69420420420; // 69,420,420,420
     uint256 private immutable INITIAL_SUPPLY; 
     //uint256 private currentSupply; //this may actually be available in ERC20.sol as _totalSupply
-    uint256 private circulatingSupply;
+    uint256 private circulatingSupply; //right now I have nothing updating this
+    //maybe create updateCirculatingSupply function which is then added to mint function to auto-update each time new tokens minted
 
     uint256 private initialStakingAPR = 69; //not sure if this is even something I need - it's going to vary based on proportion of staked tokens
+
+    address public stakingAddress; 
 
     constructor(uint256 _initialSupply) ERC20("MockToken", "MOCK") {
         INITIAL_SUPPLY = _initialSupply;
         
-        //not sure if doing the airdrop at this point, so I need to figure out what i'm going to actually do with this initial supply
+        //probably not doing the airdrop at this point, so I need to figure out what i'm going to actually do with this initial supply
         _mint(address(this), INITIAL_SUPPLY); //mints initial supply. Currently have set to mint tokens to the address of the contract, but may change that. Could potentially use a separate contract to hold tokens and handle airdrop, but not sure yet
-
-        circulatingSupply = totalSupply() - balanceOf(address(this)); //should be zero at time of deployment
+        //I might just send this initial mint to the deployer, I don't know what exactly I'd do with them sitting in here
+        circulatingSupply = totalSupply() - balanceOf(address(this)); //should be zero at time of deployment unless I change where the initial mint goes
     }
 
     function mint(address to, uint256 amount) public onlyOwner {
         _mint(to, amount); 
+        updateCirculatingSupply();
     }
+
+    function updateCirculatingSupply() public {
+        circulatingSupply = getCurrentSupply() - balanceOf(stakingAddress);
+    }
+
+    function setStakingAddress(address _stakingAddress) public onlyOwner {
+        stakingAddress = _stakingAddress;
+    } //this will only be called once - directly BEFORE ownership is transferred to the staking address;
 
 
     //////////////////////
@@ -49,6 +61,10 @@ contract MockToken is ERC20, Ownable {
 
     function getCirculatingSupply() public view returns (uint256) { 
         return circulatingSupply;
+    }
+
+    function getStakedSupply() public view returns (uint256) {
+        return balanceOf(stakingAddress);
     }
 
     function getOwner() public view returns (address) {

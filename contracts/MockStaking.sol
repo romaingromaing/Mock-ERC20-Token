@@ -24,11 +24,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 */
 
 /* TO DO:
+ * - include a mechanism to actually mint tokens to distribute lls
  * - include maximum token supply
  * - decide on and include emission rate - this is the rewardRate - setRewardRate(uint256 rate) onlyOwner
  * - make sure my comments and understanding of all variables (especially the mappings) are correct
  * - add getter functions where necessary/useful
- * - 
+ * - finish tests - need deploy scripts too
  * - clean up code and comments
 */
 contract MockStaking {
