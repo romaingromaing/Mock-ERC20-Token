@@ -14,7 +14,9 @@ describe("Mock Token Unit Tests", () => {
         mockTokenContract = await ethers.getContract("MockToken")
         mockToken = mockTokenContract.connect(deployer)
         mockStakingContract = await ethers.getContract("MockStaking")
-        mockStaking = await mockStakingContract.connect(deployer)   
+        mockStaking = await mockStakingContract.connect(deployer) 
+        userMockStaking = await mockStakingContract.connect(user) 
+        //going to need to send tokens to user and set allowance for staking contract 
     })
     describe('MockToken Contract', () => {
         describe('Constructor', () => {
@@ -140,60 +142,190 @@ describe("Mock Token Unit Tests", () => {
     
     describe('MockStaking Contract', () => {
         describe('constructor', () => {
-            it('sets the correct MockToken Address', () => {
-
+            it('sets the correct MockToken Address', async () => {
+                const correctAddress = mockToken.address;
+                const address = await mockStaking.mockTokenAddress(); //this SHOULD let me access the public variable since solidity should assign a getter function for any public var
+                assert.equal(correctAddress, Address);
             })
-            it('instantiates mockToken with ERC20 functionality', () => {
+            it('instantiates mockToken with ERC20 functionality', async () => {
                 //just show u can use erc20 functions on this object
             })
-            it('sets the correct reward rate', () => {
+            it('sets the correct reward rate', async () => {
 
             })
         })
         describe('calcRewardPerToken function', () => {
-            
-        })
-        describe('updateReward modifier', () => {
+            it('returns rewardPerToken if staked amount is zero', async () => {
 
-        })
-        describe('stake function', () => {
-            it('successfully calls updateReward modifier', () => {
+            })
+            it('correctly adds rewards accumulated since last reward update as a proportion of the total stake pool', async () => {
 
             })
         })
-        describe('withdraw function', () => {
-            it('successfully calls updateReward modifier', () => {
+        describe('updateReward modifier', () => {
+            it('successfully calls the calcRewardPerToken function', async () => {
+
+            })
+            it('correctly updates the updatedAt variable with current timestamp', async () => {
+
+            })
+            it('does nothing if called by the zero address', async () => {
+                //tbh idk if I can even test this, I'm not sure if this would ever even happen anyway
+            })
+            it('successfully updates the rewards mapping', async () => {
+
+            })
+            it('successfully updates the userRewardPerTokenPaid mapping', async () => {
+
+            })
+        })
+        describe('stake function', () => {
+            it('successfully calls updateReward modifier', async () => {
+
+            })
+            it('reverts if amount is zero', async () => {
+                const amount = 0;
+                await expect(userMockStaking.stake(amount)).to.be.revertedWith(
+                    "Amount must be greater than zero"
+                );
+            })
+            it('reverts if amount is negative', async () => {
+                const amount = -69;
+                await expect(userMockStaking.stake(user.address, amount)).to.be.revertedWith(
+                    "Amount must be greater than zero"
+                );
+            })
+            it('transfers tokens from user to staking contract', async () => {
+                const initialUserBalance = await mockToken.balanceOf(user.address);
+                const initialStakingContractBalance = await mockToken.balanceOf(mockStaking.address);
                 
+                const tx = await userMockStaking.stake(userInitialBalance);
+                await tx.wait(5);
+
+                const finalUserBalance = await mockToken.balanceOf(user.address);
+                const finalStakingContractBalance = await mockToken.balanceOf(mockStaking.address);
+
+                const userBalanceDelta = initialUserBalance-finalUserBalance;
+                const stakingContractBalanceDelta = finalStakingContractBalance-initialStakingContractBalance;
+                assert.equal(userBalanceDelta ,stakingContractBalanceDelta);
+            })
+            it('updates user account in balances mapping', async () => {
+                const initialBalance = await userMockStaking.getBalance();
+                const stakeAmount = await mockToken.balanceOf(user.address);
+                const tx = await userMockStaking.stake(stakeAmount);
+                await tx.wait(5);
+                const finalBalance = await userMockStaking.getBalance();
+                const balanceDelta = finalBalance - initialBalance;
+                assert.equal(balanceDelta, stakeAmount);
+            })
+            it('updates totalStaked variable', async () => {
+                const initialTotalStaked = await mockStaking.getTotalStaked();
+                const stakeAmount = 69420;
+                const tx = await userMockStaking.stake(stakeAmount); 
+                await tx.wait(5);
+                const finalTotalStaked = await mockStaking.getTotalStaked();
+                assert.equal((initialTotalStaked + stakeAmount), finalTotalStaked);
+            })
+
+        })
+        describe('withdraw function', () => {
+            it('successfully calls updateReward modifier', async () => {
+                
+            })
+            it('reverts if amount is zero', async () => {
+                const amount = 0;
+                await expect(userMockStaking.withdraw(amount)).to.be.revertedWith(
+                    "Amount must be greater than zero"
+                );
+            })
+            it('reverts if amount is negative', async () => {
+                const amount = -69;
+                await expect(userMockStaking.withdraw(user.address, amount)).to.be.revertedWith(
+                    "Amount must be greater than zero"
+                );
+            })
+            iit('updates user account in balances mapping', async () => {
+                // const initialBalance = await userMockStaking.getBalance();
+                // const withdrawAmount = await mockToken.balanceOf(user.address);
+                // const tx = await userMockStaking.stake(stakeAmount);
+                // await tx.wait(5);
+                // const finalBalance = await userMockStaking.getBalance();
+                // const balanceDelta = finalBalance - initialBalance;
+                // assert.equal(balanceDelta, stakeAmount);
+            })
+            it('updates totalStaked variable', async () => {
+                // const initialTotalStaked = await mockStaking.getTotalStaked();
+                // const stakeAmount = 69420;
+                // const tx = await userMockStaking.stake(stakeAmount); 
+                // await tx.wait(5);
+                // const finalTotalStaked = await mockStaking.getTotalStaked();
+                // assert.equal((initialTotalStaked + stakeAmount), finalTotalStaked);
+            })
+            it('transfers tokens from staking address to user', async () => {
+
             })
         })
         describe('earned function', () => {
+            it('returns the correct amount of accumulated rewards', async () => {
 
+            })
         })
-        describe('getReward function', () => {
-            it('successfully calls updateReward modifier', () => {
+        describe('claimReward function', () => {
+            it('successfully calls updateReward modifier', async () => {
                 
             })
-            it('does nothing if user has no claimable rewards', () => {
+            it('does nothing if user has no claimable rewards', async () => {
 
             })
-            it('correctly transfers claimable rewards to user', () => {
+            it('correctly updates claimable rewards to zero', async () => {
 
             })
-            it('correctly updates claimable rewards to zero after dispersion', () => {
+            it('correctly mints and transfers claimable rewards to user', async () => {
 
             })
+            it('is not vulnerable to reentrancy', async () => {
+                //for this one just try to do a reentrant attack - create a whole new contract
+            })
+            
         })
         describe('setRewardRate function', () => {
-            it('can only be called by the contract owner', () => {
-
+            it('can only be called by the contract owner', async () => {
+                await expect(userMockStaking.setRewardRate(69)).to.be.revertedWith(
+                    "Ownable: caller is not the owner"
+                );
             })
-            it('correctly sets the new reward rate', () => {
-
+            it('does not accept zero as a value', async () => {
+                await expect(mockStaking.setRewardRate(0)).to.be.revertedWith(
+                    "New reward rate must be greater than zero"
+                );
+            })
+            it('does not accept negative numbers', async () => {
+                await expect(mockStaking.setRewardRate(-69)).to.be.revertedWith(
+                    "New reward rate must be greater than zero"
+                );
+            })
+            it('correctly sets the new reward rate', async () => {
+                const expectedRewardRate = 7;
+                const tx = await mockStaking.setRewardRate(expectedRewardRate);
+                await tx.wait(5);
+                const rewardRate = await mockStaking.rewardRate();
+                assert.equal(expectedRewardRate, rewardRate);
             })
         })
         describe('getBalance function', () => {
-            it('returns the correct balance', () => {
-
+            it('returns the correct balance', async () => {
+                const expectedBalance =  69;
+                const tx = await userMockStaking.stake(expectedBalance);
+                await tx.wait(5);
+                const balance = await userMockStaking.getBalance();
+                assert.equal(expectedBalance, balance);
+            })
+        })
+        describe('getTotalStakedFunction', () => {
+            it('returns the correct totalStaked', async () => {
+                const expectedTotalStaked = await userMockStaking.totalStaked();
+                const totalStaked = await userMockStaking.getTotalStaked();
+                assert.equal(expectedTotalStaked, totalStaked);
             })
         })
         

@@ -20,6 +20,7 @@ contract MockToken is ERC20, Ownable {
 
     address public stakingAddress; 
 
+    //do I need to add anything for ownable to this?
     constructor(uint256 _initialSupply) ERC20("MockToken", "MOCK") {
         INITIAL_SUPPLY = _initialSupply;
         

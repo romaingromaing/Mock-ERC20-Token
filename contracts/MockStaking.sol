@@ -17,14 +17,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * not when a certain time period has passed
 */
 
-/* 
- * I defintiely want to write some unit tests for this, get 100% coverage
- * Will be good practice both for unit testing and for showing I truly 
- * understand the contract
-*/
 
 /* TO DO:
- * - include a mechanism to actually mint tokens to distribute lls
  * - include maximum token supply
  * - decide on and include emission rate - this is the rewardRate - setRewardRate(uint256 rate) onlyOwner
  * - make sure my comments and understanding of all variables (especially the mappings) are correct
@@ -32,10 +26,14 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * - finish tests - need deploy scripts too
  * - clean up code and comments
 */
-contract MockStaking {
+contract MockStaking is Ownable {
     //Token vars
-    IERC20 public immutable mockToken; //IERC20 instead of IMockToken so I can have access to basic erc20 functions, I dont need any specifically mocktoken functions
+
+    IMockToken public immutable mockToken; //IMockToken interface also includes all ERC20 events/functions
     address public immutable mockTokenAddress; //not sure if I'll need this yet
+    
+    uint256 public immutable maxSupply;
+    
     //staking rewards to be paid per second
     uint256 public rewardRate;
     // Sum of (rewardRate * time elapsed * 1e18 / totalStaked) - account's personal claim of accumulated rewards
@@ -54,8 +52,9 @@ contract MockStaking {
 
     constructor(address _mockTokenAddress, uint256 initialRewardRate) {
         mockTokenAddress = _mockTokenAddress;
-        mockToken = IERC20(mockTokenAddress);
+        mockToken = IMockToken(mockTokenAddress);
         rewardRate = initialRewardRate;
+        maxSupply = mockToken.getMaxSupply();
     }
 
     // Update staking reward each time certain functions are called
@@ -81,7 +80,7 @@ contract MockStaking {
         require(_amount > 0, "Amount must be greater than zero");
         balances[msg.sender] -= _amount;
         totalStaked -= _amount;
-        mockToken.transfer(msg.sender, _amount);
+        mockToken.transfer(msg.sender, _amount); 
     }
 
     function calcRewardPerToken() public view returns (uint256) {
@@ -101,16 +100,17 @@ contract MockStaking {
     }
 
     // this should be correct, needs comment.
-    function getReward() external updateReward(msg.sender) {
+    function claimReward() external updateReward(msg.sender) {
         uint reward = rewards[msg.sender];
         if (reward > 0) {
-            rewards[msg.sender] = 0;
-            mockToken.transfer(msg.sender, reward);
+            rewards[msg.sender] = 0; //before mint to prevent reentrancy
+            mockToken.mint(msg.sender, reward);
         }
     }
 
 
     function setRewardRate(uint256 newRewardRate) public onlyOwner {
+        require(newRewardRate > 0, "New reward rate must be greater than zero");
         rewardRate = newRewardRate;
     }
 
@@ -123,5 +123,9 @@ contract MockStaking {
 
     function getBalance() public view returns (uint256) {
         return balances[msg.sender];
+    }
+
+    function getTotalStaked() public view returns(uint256) {
+        return totalStaked;
     }
 }
