@@ -24,10 +24,9 @@ contract MockToken is ERC20, Ownable {
     constructor(uint256 _initialSupply) ERC20("MockToken", "MOCK") {
         INITIAL_SUPPLY = _initialSupply;
         
-        //probably not doing the airdrop at this point, so I need to figure out what i'm going to actually do with this initial supply
-        _mint(address(this), INITIAL_SUPPLY); //mints initial supply. Currently have set to mint tokens to the address of the contract, but may change that. Could potentially use a separate contract to hold tokens and handle airdrop, but not sure yet
-        //I might just send this initial mint to the deployer, I don't know what exactly I'd do with them sitting in here
-        circulatingSupply = totalSupply() - balanceOf(address(this)); //should be zero at time of deployment unless I change where the initial mint goes
+        _mint(msg.sender, INITIAL_SUPPLY); //mints initial supply to this contract address
+
+        circulatingSupply = totalSupply(); 
     }
 
     function mint(address to, uint256 amount) public onlyOwner {

@@ -6,6 +6,10 @@ interface IMockToken {
     
     function mint(address to, uint256 amount) external;
 
+    function updateCirculatingSupply() external;
+
+    function setStakingAddress(address _stakingAddress) external;
+
     //////////////////////
     // Getter Funcitons //
     //////////////////////

@@ -2,28 +2,13 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./interfaces/IMockToken.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 
-/* 
- * if some of the ERC20 functionality doesnt work for the token, use the 
- * actual contract instead of the interface - I'm not sure if the interface
- * will handle inheritance properly with the compiler.
-*/
-
-/*
- * I also want to set it to stop issuing new tokens once the max supply is reached,
- * not when a certain time period has passed
-*/
-
-
 /* TO DO:
- * - include maximum token supply
- * - decide on and include emission rate - this is the rewardRate - setRewardRate(uint256 rate) onlyOwner
  * - make sure my comments and understanding of all variables (especially the mappings) are correct
  * - add getter functions where necessary/useful
- * - finish tests - need deploy scripts too
  * - clean up code and comments
 */
 contract MockStaking is Ownable {
@@ -33,7 +18,7 @@ contract MockStaking is Ownable {
     address public immutable mockTokenAddress; //not sure if I'll need this yet
     
     uint256 public immutable maxSupply;
-    
+
     //staking rewards to be paid per second
     uint256 public rewardRate;
     // Sum of (rewardRate * time elapsed * 1e18 / totalStaked) - account's personal claim of accumulated rewards
@@ -74,6 +59,7 @@ contract MockStaking is Ownable {
         mockToken.transferFrom(msg.sender, address(this), _amount);
         balances[msg.sender] += _amount;
         totalStaked += _amount; 
+        mockToken.updateCirculatingSupply();
     }
 
     function withdraw(uint _amount) external updateReward(msg.sender) {
@@ -81,6 +67,7 @@ contract MockStaking is Ownable {
         balances[msg.sender] -= _amount;
         totalStaked -= _amount;
         mockToken.transfer(msg.sender, _amount); 
+        mockToken.updateCirculatingSupply();
     }
 
     function calcRewardPerToken() public view returns (uint256) {
@@ -92,16 +79,25 @@ contract MockStaking is Ownable {
     }
 
     //need to update with my vars (some of which need to still be created)
+    // added mechanism to stop reward accrual if maxSupply is reached
     function earned(address _account) public view returns (uint256) {
-        return
-            ((balances[_account] *
-                (calcRewardPerToken() - userRewardPerTokenPaid[_account])) / 1e18) +
-            rewards[_account];
+        if(mockToken.totalSupply() <  maxSupply) {
+            uint256 earnedRewards = ((balances[_account] *
+                    (calcRewardPerToken() - userRewardPerTokenPaid[_account])) / 1e18);
+            if(mockToken.totalSupply() + earnedRewards > maxSupply) {
+                return (rewards[_account] + (maxSupply-mockToken.totalSupply()));
+            } else {
+                return earnedRewards + rewards[_account];
+            }
+        } else {
+            return rewards[_account];
+        }
+        
     }
 
     // this should be correct, needs comment.
     function claimReward() external updateReward(msg.sender) {
-        uint reward = rewards[msg.sender];
+        uint256 reward = rewards[msg.sender];
         if (reward > 0) {
             rewards[msg.sender] = 0; //before mint to prevent reentrancy
             mockToken.mint(msg.sender, reward);
@@ -127,5 +123,9 @@ contract MockStaking is Ownable {
 
     function getTotalStaked() public view returns(uint256) {
         return totalStaked;
+    }
+    
+    function getRewards() public view returns (uint256) {
+        return rewards[msg.sender];
     }
 }
