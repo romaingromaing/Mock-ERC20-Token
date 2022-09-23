@@ -7,15 +7,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 
 /* TO DO:
- * - make sure my comments and understanding of all variables (especially the mappings) are correct
- * - add getter functions where necessary/useful
- * - clean up code and comments
+ * - clean up code and add comments
 */
 contract MockStaking is Ownable {
     //Token vars
 
     IMockToken public immutable mockToken; //IMockToken interface also includes all ERC20 events/functions
-    address public immutable mockTokenAddress; //not sure if I'll need this yet
+    address public immutable mockTokenAddress; 
     
     uint256 public immutable maxSupply;
 

@@ -1,7 +1,3 @@
-//deploying both contracts in 1 file for now. Would like to get the separate files working
-//the issue is related to the tokenAddress - I either need to export it in this file and import in the other
-//or the issue is that it deploys and then deletes when/if the hardhat chain stops functioning - might work on an actual ganache chain idk
-
 require("@nomiclabs/hardhat-ethers");
 const hre = require('hardhat');
 const { verify } = require("../utils/verify");
@@ -27,7 +23,14 @@ const main = async () => {
     await stakingContract.deployed();
     console.log("Staking contract deployed to:", stakingContract.address);
 
-    //still need to add setStakingAddress and ownership transfer to this
+    let accounts = await ethers.getSigners();
+    let deployer = accounts[0];
+    let mockToken = tokenContract.connect(deployer);
+    //SetStakingAddress
+    await mockToken.setStakingAddress(stakingContract.address);
+    //transfer ownership of the token to the staking address
+    const tx = await mockToken.transferOwnership(stakingContract.address); 
+    tx.wait(1);
 
     //explorer verification
     //   tokenContract.deployTransaction.wait(10); //Allow etherscan to register the deployment

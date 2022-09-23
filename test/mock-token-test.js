@@ -189,7 +189,7 @@ describe("Mock Token Unit Tests", () => {
                 })
                 it('returns correct owner after ownership transferred to staking contract', async () => {
                     const expectedOwner = mockStaking.address;
-                    const tx = await mockToken.transferOwnership(mockStaking.address); //might want mockStakingContract.address, not sure
+                    const tx = await mockToken.transferOwnership(mockStaking.address); 
                     await tx.wait(1);
                     const owner = await mockToken.getOwner();
                     assert.equal(expectedOwner, owner);

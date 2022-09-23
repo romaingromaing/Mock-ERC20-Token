@@ -12,15 +12,10 @@ contract MockToken is ERC20, Ownable {
     /////////////////////
     uint256 private constant MAX_SUPPLY = 69420420420; // 69,420,420,420
     uint256 private immutable INITIAL_SUPPLY; 
-    //uint256 private currentSupply; //this may actually be available in ERC20.sol as _totalSupply
-    uint256 private circulatingSupply; //right now I have nothing updating this
-    //maybe create updateCirculatingSupply function which is then added to mint function to auto-update each time new tokens minted
-
-    uint256 private initialStakingAPR = 69; //not sure if this is even something I need - it's going to vary based on proportion of staked tokens
+    uint256 private circulatingSupply;
 
     address public stakingAddress; 
 
-    //do I need to add anything for ownable to this?
     constructor(uint256 _initialSupply) ERC20("MockToken", "MOCK") {
         INITIAL_SUPPLY = _initialSupply;
         
