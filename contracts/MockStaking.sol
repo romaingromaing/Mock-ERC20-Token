@@ -46,10 +46,9 @@ contract MockStaking is Ownable {
     modifier updateReward(address _account) {
         rewardPerToken = calcRewardPerToken();
         updatedAt = block.timestamp;
-        if (_account != address(0)) {
-            rewards[_account] = earned(_account);
-            userRewardPerTokenPaid[_account] = rewardPerToken;
-        }
+        rewards[_account] = earned(_account);
+        userRewardPerTokenPaid[_account] = rewardPerToken;
+
         _;
     }
 
@@ -78,7 +77,6 @@ contract MockStaking is Ownable {
         return rewardPerToken + (rewardRate * (block.timestamp - updatedAt) * 1e18) / totalStaked;
     }
 
-    //need to update with my vars (some of which need to still be created)
     // added mechanism to stop reward accrual if maxSupply is reached
     function earned(address _account) public view returns (uint256) {
         if(mockToken.totalSupply() <  maxSupply) {
@@ -92,10 +90,8 @@ contract MockStaking is Ownable {
         } else {
             return rewards[_account];
         }
-        
     }
 
-    // this should be correct, needs comment.
     function claimReward() external updateReward(msg.sender) {
         uint256 reward = rewards[msg.sender];
         if (reward > 0) {

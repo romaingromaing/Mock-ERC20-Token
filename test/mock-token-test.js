@@ -4,11 +4,6 @@ const hre = require('hardhat')
 require("@nomiclabs/hardhat-ethers");
 
 
-
-//-need to do approvals
-//-figure out what i need to do to get correct variable type for owner - check ownable contract - it might be because getOwner returns a function call
-//-might need to set up a fixture so that the user balances etc are restarting between each test - that might be what's throwing off some of the getter functions
-
 describe("Mock Token Unit Tests", () => {
     let mockToken, mockTokenContract, userMockToken, mockStaking, mockStakingContract, userMockStaking
     let initialSupply = 69420420;
@@ -33,7 +28,6 @@ describe("Mock Token Unit Tests", () => {
         await mockStakingContract.deployed();
         mockStaking = mockStakingContract.connect(deployer) 
         userMockStaking = mockStakingContract.connect(user) 
-        //going to need to send tokens to user and set allowance for staking contract 
     
         //SetStakingAddress
         await mockToken.setStakingAddress(mockStaking.address);
@@ -80,7 +74,7 @@ describe("Mock Token Unit Tests", () => {
         })
         describe('updateCirculatingSupply function', () => {
             it('correctly updates the circulating supply when tokens are staked/withdrawn', async () => {
-                const initialCirculatingSupply = await mockToken.getCirculatingSupply();
+                const initialCirculatingSupply = (await mockToken.getCirculatingSupply()).toString();
                 const stakeAmount = 420420;
                 let tx = await userMockStaking.stake(stakeAmount);
                 await tx.wait(1);
@@ -89,8 +83,8 @@ describe("Mock Token Unit Tests", () => {
                 assert.equal(stakeAmount, circulatingSupplyDelta);
                 tx = await userMockStaking.withdraw(stakeAmount);
                 await tx.wait(1);
-                const okSeriouslyFinalCirculatingSupply = await mockToken.getCirculatingSupply();
-                assert.equal(initialCirculatingSupply.toString(), okSeriouslyFinalCirculatingSupply.toString());
+                const okSeriouslyFinalCirculatingSupply = (await mockToken.getCirculatingSupply()).toString();
+                assert.equal(initialCirculatingSupply, okSeriouslyFinalCirculatingSupply);
             })
             it('correctly updates circulating supply when tokens are minted', async () => {
                 const initialSupply = await mockToken.getInitialSupply();
@@ -158,7 +152,7 @@ describe("Mock Token Unit Tests", () => {
                     assert.equal(stakeAmount, circulatingSupplyDelta);
                 })
                 it('returns the correct circulatingSupply after tokens have been unstaked', async () => {
-                    const initialCirculatingSupply = await mockToken.getCirculatingSupply();
+                    const initialCirculatingSupply = (await mockToken.getCirculatingSupply()).toString();
                     const stakeAmount = 420420;
                     let tx = await userMockStaking.stake(stakeAmount);
                     await tx.wait(1);
@@ -167,8 +161,24 @@ describe("Mock Token Unit Tests", () => {
                     assert.equal(stakeAmount, circulatingSupplyDelta);
                     tx = await userMockStaking.withdraw(stakeAmount);
                     await tx.wait(1);
-                    const okSeriouslyFinalCirculatingSupply = await mockToken.getCirculatingSupply();
-                    assert.equal(initialCirculatingSupply.toString(), okSeriouslyFinalCirculatingSupply.toString());
+                    const okSeriouslyFinalCirculatingSupply = (await mockToken.getCirculatingSupply()).toString();
+                    assert.equal(initialCirculatingSupply, okSeriouslyFinalCirculatingSupply);
+                })
+            })
+            describe('getStakedSupply', () => {
+                it('returns the correct staked supply', async () => {
+                    const expectedInitialStakedSupply = 0;
+                    const initialStakedSupply = await userMockToken.getStakedSupply();
+                    assert.equal(expectedInitialStakedSupply, initialStakedSupply);
+
+                    //stake some tokens
+                    const stakeAmount = 420420;
+                    let tx = await userMockStaking.stake(stakeAmount);
+                    await tx.wait(1);
+
+                    const expectedFinalStakedSupply = stakeAmount;
+                    const finalStakedSupply = await userMockToken.getStakedSupply();
+                    assert.equal(expectedFinalStakedSupply, finalStakedSupply);
                 })
             })
             describe('getOwner', () => {
@@ -245,24 +255,24 @@ describe("Mock Token Unit Tests", () => {
                
                 const totalStaked = await mockStaking.totalStaked();
                 assert.equal(totalStaked.toNumber(),0);
-                const expectedResult = await mockStaking.rewardPerToken();
-                const result = await mockStaking.calcRewardPerToken();
-                assert.equal(expectedResult.toNumber(),result.toNumber());
+                const expectedResult = (await mockStaking.rewardPerToken()).toNumber();
+                const result = (await mockStaking.calcRewardPerToken()).toNumber();
+                assert.equal(expectedResult, result);
             })
             it('correctly adds rewards accumulated since last reward update as a proportion of the total stake pool', async () => {
-                const initialRewardPerToken = await mockStaking.calcRewardPerToken(); //not using await cus I wanna try to use async to get block timestamp simultaneously
+                const initialRewardPerToken = await mockStaking.calcRewardPerToken();
                 const totalStaked = await mockStaking.getTotalStaked();
+                const updatedAt = await mockStaking.updatedAt();
+                await network.provider.send("evm_mine"); //wait for time to pass so rewards can accumulate
                 const block = await hre.ethers.provider.getBlock("latest");
                 const timestamp = block.timestamp;
-                const updatedAt = await mockStaking.updatedAt();
-                console.log(`updatedAt: ${updatedAt}, totalStaked: ${totalStaked}, timestamp: ${timestamp}`);
-                assert.equal(0,1);
-                //for some reason updatedAt and block.timestamp are the same which is why rewards is zero
-                //need to figure this out
+                const rewardRate = await mockStaking.rewardRate();
+                const finalRewardPerToken = (await mockStaking.calcRewardPerToken()).toNumber()
+                const expectedRewardPerToken = parseInt(initialRewardPerToken + (rewardRate * (timestamp - updatedAt) * (10**18)) / totalStaked);
+                assert.equal(expectedRewardPerToken, finalRewardPerToken);
             })
         })
         describe('updateReward modifier', () => {
-            //I'm going to use claimReward() to call the modifier so that it doesn't alter amount of tokens staked
             beforeEach(async () => {
                 //need to stake and update rewards to get an initial reward rate
                 const stakeAmount = 420420;
@@ -278,43 +288,55 @@ describe("Mock Token Unit Tests", () => {
                 assert.notEqual(initialRewardPerToken, finalRewardPerToken);
             })
             it('correctly updates the updatedAt variable with current timestamp', async () => {
-               const block = await hre.ethers.provider.getBlock("latest");
-               const timestamp = block.timestamp; 
-               console.log(`timestamp: ${timestamp}`);
-                assert.equal(0,1); //placeholder so i know how many tests actually pass
-            })
-            it('does nothing if called by the zero address', async () => {
-                //tbh idk if I can even test this, I'm not sure if this would ever even happen anyway
-                assert.equal(0,1); //placeholder so i know how many tests actually pass
+                const initialUpdatedAt = await userMockStaking.updatedAt();
+                const block = await hre.ethers.provider.getBlock("latest");
+                const timestamp = block.timestamp; 
+                const finalUpdatedAt = await userMockStaking.updatedAt();
+                assert.notEqual(initialUpdatedAt, finalUpdatedAt);
+                assert.equal(timestamp, finalUpdatedAt);
             })
             it('successfully updates the rewards mapping', async () => {
-                assert.equal(0,1); //placeholder so i know how many tests actually pass
+                const initialReward = await userMockStaking.getRewards();
+                const tx = await userMockStaking.withdraw(420420); //this will call the modifier
+                await tx.wait(1);
+                const tx2 = await userMockStaking.stake(420420); //this will call it again - making sure some time has passed for rewards to accumulate
+                await tx2.wait(1);
+                const finalReward = await userMockStaking.getRewards();
+                assert.notEqual(initialReward,finalReward); 
             })
             it('successfully updates the userRewardPerTokenPaid mapping', async () => {
-                assert.equal(0,1); //placeholder so i know how many tests actually pass
+                const initialRewardPerTokenPaid = await userMockStaking.userRewardPerTokenPaid(user.address);
+                const tx = await userMockStaking.withdraw(420420); //this will call the modifier
+                await tx.wait(1);
+                const tx2 = await userMockStaking.stake(420420); //this will call it again - making sure some time has passed for rewards to accumulate
+                await tx2.wait(1);
+                const finalRewardPerTokenPaid = await userMockStaking.userRewardPerTokenPaid(user.address);
+                assert.notEqual(initialRewardPerTokenPaid,finalRewardPerTokenPaid); 
             })
         })
         describe('stake function', () => {
             it('successfully calls updateReward modifier', async () => {
-                assert.equal(0,1); //placeholder so i know how many tests actually pass
+                const initialRewards = await userMockStaking.rewards(user.address);
+                await network.provider.send("evm_mine"); //wait for time to pass so rewards can accumulate
+                const stakeAmount = 420420;
+                const tx = await userMockStaking.stake(stakeAmount);
+                await tx.wait(1);
+                const finalRewards = await userMockStaking.rewards(user.address);
+                assert.notEqual(initialRewards,finalRewards); 
             })
             it('reverts if amount is zero', async () => {
                 const amount = 0;
-                await expect(userMockStaking.stake(amount)).to.be.revertedWith(
-                    "Amount must be greater than zero"
-                );
+                await expect(userMockStaking.stake(amount)).to.be.reverted;
             })
             it('reverts if amount is negative', async () => {
                 const amount = -69;
-                await expect(userMockStaking.stake(user.address, amount)).to.be.revertedWith(
-                    "Amount must be greater than zero"
-                );
+                await expect(userMockStaking.stake(user.address, amount)).to.be.reverted;
             })
             it('transfers tokens from user to staking contract', async () => {
                 const initialUserBalance = await mockToken.balanceOf(user.address);
                 const initialStakingContractBalance = await mockToken.balanceOf(mockStaking.address);
                 
-                const tx = await userMockStaking.stake(userInitialBalance);
+                const tx = await userMockStaking.stake(initialUserBalance);
                 await tx.wait(1);
 
                 const finalUserBalance = await mockToken.balanceOf(user.address);
@@ -334,18 +356,29 @@ describe("Mock Token Unit Tests", () => {
                 assert.equal(balanceDelta, stakeAmount);
             })
             it('updates totalStaked variable', async () => {
-                const initialTotalStaked = await mockStaking.getTotalStaked();
+                const initialTotalStaked = parseInt(await mockStaking.getTotalStaked());
                 const stakeAmount = 69420;
                 const tx = await userMockStaking.stake(stakeAmount); 
                 await tx.wait(1);
-                const finalTotalStaked = await mockStaking.getTotalStaked();
+                const finalTotalStaked = (await mockStaking.getTotalStaked()).toNumber();
                 assert.equal((initialTotalStaked + stakeAmount), finalTotalStaked);
             })
 
         })
         describe('withdraw function', () => {
+            beforeEach(async () => {
+                const stakeAmount = 420420;
+                const tx = await userMockStaking.stake(stakeAmount);
+                await tx.wait(1);
+            })
             it('successfully calls updateReward modifier', async () => {
-                assert.equal(0,1); //placeholder so i know how many tests actually pass
+                const initialRewards = await userMockStaking.rewards(user.address);
+                await network.provider.send("evm_mine"); //wait for time to pass so rewards can accumulate
+                const withdrawAmount = 420420;
+                const tx = await userMockStaking.withdraw(withdrawAmount);
+                await tx.wait(1);
+                const finalRewards = await userMockStaking.rewards(user.address);
+                assert.notEqual(initialRewards,finalRewards);
             })
             it('reverts if amount is zero', async () => {
                 const amount = 0;
@@ -356,62 +389,253 @@ describe("Mock Token Unit Tests", () => {
                 await expect(userMockStaking.withdraw(amount)).to.be.reverted;
             })
             it('updates user account in balances mapping', async () => {
-                // const initialBalance = await userMockStaking.getBalance();
-                // const withdrawAmount = await mockToken.balanceOf(user.address);
-                // const tx = await userMockStaking.stake(stakeAmount);
-                // await tx.wait(5);
-                // const finalBalance = await userMockStaking.getBalance();
-                // const balanceDelta = finalBalance - initialBalance;
-                // assert.equal(balanceDelta, stakeAmount);
-
-                assert.equal(0,1); //placeholder so i know how many tests actually pass
+                const initialBalance = await userMockStaking.getBalance();
+                const withdrawAmount = 69420
+                const tx = await userMockStaking.withdraw(withdrawAmount);
+                await tx.wait(1);
+                const finalBalance = await userMockStaking.getBalance();
+                const balanceDelta =  initialBalance - finalBalance;
+                assert.equal(balanceDelta, withdrawAmount);
             })
             it('updates totalStaked variable', async () => {
-                // const initialTotalStaked = await mockStaking.getTotalStaked();
-                // const stakeAmount = 69420;
-                // const tx = await userMockStaking.stake(stakeAmount); 
-                // await tx.wait(5);
-                // const finalTotalStaked = await mockStaking.getTotalStaked();
-                // assert.equal((initialTotalStaked + stakeAmount), finalTotalStaked);
-
-                assert.equal(0,1); //placeholder so i know how many tests actually pass
+                const initialTotalStaked = await userMockStaking.getTotalStaked();
+                const withdrawAmount = 69420;
+                const tx = await userMockStaking.withdraw(withdrawAmount); 
+                await tx.wait(1);
+                const finalTotalStaked = await userMockStaking.getTotalStaked();
+                const totalStakedDelta = finalTotalStaked - initialTotalStaked;
+                assert.equal(-totalStakedDelta, withdrawAmount);
             })
             it('transfers tokens from staking address to user', async () => {
-                assert.equal(0,1); //placeholder so i know how many tests actually pass
+                const initialStakedAmount = await userMockStaking.getBalance();
+                const initialUserWalletBalance = await userMockToken.getBalance();
+                const withdrawAmount = 69420;
+                const tx = await userMockStaking.withdraw(withdrawAmount);
+                await tx.wait(1);
+                const finalStakedAmount = await userMockStaking.getBalance();
+                const finalUserWalletBalance = await userMockToken.getBalance();
+                const stakedAmountDelta = finalStakedAmount - initialStakedAmount;
+                const userWalletBalanceDelta = finalUserWalletBalance - initialUserWalletBalance;
+                assert.equal(-stakedAmountDelta, userWalletBalanceDelta);
+                assert.notEqual(userWalletBalanceDelta, 0)
             })
         })
         describe('earned function', () => {
             it('returns the correct amount of accumulated rewards', async () => {
-                assert.equal(0,1); //placeholder so i know how many tests actually pass
+                const initialRewards = (await userMockStaking.earned(user.address)).toNumber();
+                
+                //stake some tokens to begin acccumulating rewards
+                const stakeAmount = 420420;
+                const tx = await userMockStaking.stake(stakeAmount);
+                await tx.wait(1);
+
+                //wait for time to pass so rewards can accumulate
+                await network.provider.send("evm_mine"); 
+                await tx.wait(1);
+
+                const expectedRewards = parseInt(
+                    (await userMockStaking.getBalance()) * (
+                        (await userMockStaking.calcRewardPerToken()) - 
+                        (await userMockStaking.userRewardPerTokenPaid(user.address))
+                    ) / (10**18)
+                );
+                const rewards = await userMockStaking.earned(user.address);
+
+                assert.notEqual(initialRewards, expectedRewards);
+                assert.equal(expectedRewards, rewards);
             })
-            it('does not add further rewards if maxSupply has previosuly been reached', async () => {
-                //need to make sure some tokens are staked and then probably just do a wait either of time or blocks
-                //also need to wait until maxSupply is reached, then try to call again after claiming rewards to mint up to max supply
-                const finalRewards = await userMockStaking.earned(user.address);
-                assert.equal(finalRewards,0);
+            it('does not add further rewards if maxSupply has previously been reached', async () => {
+                //deploy a new set of contracts where maxSupply is initial supply
+                const maxSupply = await mockToken.getMaxSupply();
+                ///Token Contract deploy
+                const mockTokenContractFactory = await hre.ethers.getContractFactory('MockToken');
+                const maxTokenContract = await mockTokenContractFactory.deploy(maxSupply); 
+                await maxTokenContract.deployed();
+                maxToken = maxTokenContract.connect(deployer);
+                userMaxToken = maxTokenContract.connect(user);
+            
+                //Staking Contract deploy
+                const mockStakingContractFactory = await hre.ethers.getContractFactory('MockStaking');
+                const maxStakingContract = await mockStakingContractFactory.deploy(maxToken.address, initialRewardRate); //pass in constructor args as deploy params
+                await maxStakingContract.deployed();
+                maxStaking = maxStakingContract.connect(deployer); 
+                userMaxStaking = maxStakingContract.connect(user); 
+                            
+                //SetStakingAddress
+                await maxToken.setStakingAddress(maxStaking.address);
+                //give the user account some tokens to work with
+                maxToken.transfer(user.address,420420);
+                //Token Approval
+                await userMaxToken.approve(maxStaking.address,69420420420); //just setting approval to maximum supply for now
+
+                //get initial rewards
+                const expectedRewards = (await userMaxStaking.earned(user.address)).toNumber();
+
+                //stake some tokens to begin acccumulating rewards
+                const stakeAmount = 420420;
+                const tx = await userMaxStaking.stake(stakeAmount);
+                await tx.wait(1);
+
+                //wait for time to pass so rewards can accumulate
+                await network.provider.send("evm_mine"); 
+                await tx.wait(1);
+
+                //get final rewards - should be zero since no rewards can be dispursed for this contract
+                const rewards = (await userMaxStaking.earned(user.address)).toNumber();
+
+                assert.equal(expectedRewards, rewards);
             })
             it('returns the correct amount of rewards if minting the earned rewards tokens would exceed the maximum supply', async () => {
-                assert.equal(0,1); //placeholder so i know how many tests actually pass
+                //deploy a new set of contracts where maxSupply - 1 is initial supply
+                const maxSupply = await mockToken.getMaxSupply();
+                const initialSupply = maxSupply - 1;
+                ///Token Contract deploy
+                const mockTokenContractFactory = await hre.ethers.getContractFactory('MockToken');
+                const maxTokenContract = await mockTokenContractFactory.deploy(initialSupply); 
+                await maxTokenContract.deployed();
+                maxToken = maxTokenContract.connect(deployer);
+                userMaxToken = maxTokenContract.connect(user);
+            
+                //Staking Contract deploy
+                const mockStakingContractFactory = await hre.ethers.getContractFactory('MockStaking');
+                const maxStakingContract = await mockStakingContractFactory.deploy(maxToken.address, initialRewardRate); //pass in constructor args as deploy params
+                await maxStakingContract.deployed();
+                maxStaking = maxStakingContract.connect(deployer); 
+                userMaxStaking = maxStakingContract.connect(user); 
+                            
+                //SetStakingAddress
+                await maxToken.setStakingAddress(maxStaking.address);
+                //give the user account some tokens to work with
+                maxToken.transfer(user.address,420420);
+                //Token Approval
+                await userMaxToken.approve(maxStaking.address,69420420420); //just setting approval to maximum supply for now
+
+                //get initial rewards
+                const expectedRewards = (await userMaxStaking.earned(user.address)).toNumber();
+
+                //stake some tokens to begin acccumulating rewards
+                const stakeAmount = 420420;
+                const tx = await userMaxStaking.stake(stakeAmount);
+                await tx.wait(1);
+
+                //wait for time to pass so rewards can accumulate
+                await network.provider.send("evm_mine"); 
+                await tx.wait(1);
+
+                //get final rewards - should be 1 since only 1 token can be minted before reaching max supply
+                const rewards = (await userMaxStaking.earned(user.address)).toNumber();
+
+                assert.notEqual(expectedRewards, rewards);
+                assert.equal(rewards, 1)
             })
         })
         describe('claimReward function', () => {
+            beforeEach(async () => {
+                const stakeAmount = 420420;
+                const tx = await userMockStaking.stake(stakeAmount);
+                await tx.wait(1);
+            })
             it('successfully calls updateReward modifier', async () => {
-                assert.equal(0,1); //placeholder so i know how many tests actually pass
+                const initialRewards = await userMockStaking.rewards(user.address);
+                await network.provider.send("evm_mine"); //wait for time to pass so rewards can accumulate
+                const tx = await userMockStaking.claimReward();
+                await tx.wait(1);
+                const finalRewards = await userMockStaking.rewards(user.address);
+                assert.notEqual(initialRewards,finalRewards); 
             })
             it('does nothing if user has no claimable rewards', async () => {
-                assert.equal(0,1); //placeholder so i know how many tests actually pass
+                //unstake and claim rewards to be sure intialRewards are zero and not accumulating
+                let tx = await userMockStaking.withdraw(await userMockStaking.getBalance());
+                await tx.wait(1);
+                tx = await userMockStaking.claimReward();
+                await tx.wait(1);
+
+                /* since rewards is zero, claimReward should not mint new tokens,
+                 supply should remain the same, and the user should not receive new tokens */
+                const initialRewards = await userMockStaking.rewards(user.address);
+                assert.equal(initialRewards, 0);
+                const initialUserBalance = (await userMockToken.getBalance()).toNumber();
+
+                const initialTotalSupply = (await userMockToken.getCurrentSupply()).toNumber();
+                tx = await userMockStaking.claimReward();
+                await tx.wait(1);
+
+                const finalUserBalance = (await userMockToken.getBalance()).toNumber();
+                assert.equal(initialUserBalance, finalUserBalance);
+
+                const finalTotalSupply = (await userMockToken.getCurrentSupply()).toNumber();
+                assert.equal(initialTotalSupply, finalTotalSupply);
             })
             it('correctly updates claimable rewards to zero', async () => {
-                assert.equal(0,1); //placeholder so i know how many tests actually pass
+                await network.provider.send("evm_mine"); //wait for time to pass so rewards can accumulate
+                (await userMockStaking.withdraw(420420)).wait(1); //to update rewards to show that initial isn't zero - could also have used rewards + calcRewardPerToken but this is easier and has no other affect on test outcome
+                const initialRewards = (await userMockStaking.rewards(user.address)).toNumber();
+                assert.notEqual(initialRewards, 0);
+
+                const tx = await userMockStaking.claimReward();
+                await tx.wait(1);
+
+                const finalRewards = (await userMockStaking.rewards(user.address)).toNumber();
+                assert.equal(finalRewards, 0);
             })
             it('correctly mints and transfers claimable rewards to user', async () => {
-                assert.equal(0,1); //placeholder so i know how many tests actually pass
+                 const initialUserBalance = (await userMockToken.getBalance()).toNumber();
+ 
+                 tx = await userMockStaking.claimReward();
+                 await tx.wait(1);
+ 
+                 const finalUserBalance = (await userMockToken.getBalance()).toNumber();
+                 assert.notEqual(initialUserBalance, finalUserBalance);
             })
             it('is not vulnerable to reentrancy', async () => {
                 //for this one just try to do a reentrant attack - create a whole new contract
-                assert.equal(0,1); //placeholder so i know how many tests actually pass
+                //deploy it and just show that it cant reentrantly attack the claim function
+                // I will need to send tokens and eth to the contract and approve token spend,
+                // stake and let it accumulate rewards so it has something to claim
+                
+                //deploy reentrant attacker contract
+                const reentrantContractFactory = await hre.ethers.getContractFactory('Reentrant');
+                const reentrantContract = await reentrantContractFactory.deploy(mockStaking.address, mockToken.address); 
+                await reentrantContract.deployed();
+                const reentrant = reentrantContract.connect(user);
+
+                //withdraw user staked tokens to supply to attacker contract
+                const amount = 420420;
+                let tx = await userMockStaking.withdraw(amount);
+                await tx.wait(1);
+
+                // Supply attacker contract with tokens and ETH for gas
+                await userMockToken.transfer(reentrant.address, amount);
+                await user.sendTransaction({to: reentrant.address, value: ethers.utils.parseEther('1.0')});
+                
+                //approve spend and stake tokens from reentrant contract
+                tx = await reentrant.approve();
+                await tx.wait(1);
+                tx = await reentrant.stake(amount);
+                await tx.wait(1);
+
+                //wait for time to pass so rewards can accumulate
+                await network.provider.send("evm_mine"); 
+                await tx.wait(1);
+
+                //withdraw tokens to update rewards (not strictly necessary but to show for the scope of this test before claiming that there are rewards to be claimed)
+                tx = await reentrant.withdraw(amount);
+                await tx.wait(1);
+                
+                //show that there are rewards to be withdrawn - claimReward will execute the code within the if statement
+                const reentrantRewards = parseInt(await reentrant.getRewards());
+                assert.notEqual(reentrantRewards, 0);
+
+                /*claim rewards - the final token balance of the reentrant contract should only be
+                the amount unstaked + the calculated rewards. if the contract cant be attacked via reentrancy
+                it should continue to mint and allow tokens to be withdrawn until max supply is reached */
+                tx = await reentrant.attack();
+                await tx.wait(1);
+
+                const expectedReentrantTokenBalance = amount + reentrantRewards;
+                const reentrantTokenBalance = (await userMockToken.balanceOf(reentrant.address)).toNumber();
+                assert.equal(expectedReentrantTokenBalance, reentrantTokenBalance);
             })
-            
         })
         describe('setRewardRate function', () => {
             it('can only be called by the contract owner', async () => {
@@ -451,9 +675,9 @@ describe("Mock Token Unit Tests", () => {
         })
         describe('getRewards function', () => {
             it('returns the correct rewards amount', async () => {
-                const expectedRewards = await mockStaking.rewards[user.address];
+                const expectedRewards = await mockStaking.rewards(user.address);
                 const rewards = await userMockStaking.getRewards();
-                assert.equal(expectedRewards, rewards);
+                assert.equal(expectedRewards.toNumber(), rewards.toNumber());
             })
         })
         
