@@ -5,7 +5,7 @@ require("@nomiclabs/hardhat-ethers");
 
 
 describe("Mock Token Unit Tests", () => {
-    let mockToken, mockTokenContract, userMockToken, mockStaking, mockStakingContract, userMockStaking
+    let mockToken, userMockToken, mockStaking, userMockStaking
     let initialSupply = 69420420;
     let initialRewardRate = 69;
 
@@ -13,7 +13,7 @@ describe("Mock Token Unit Tests", () => {
         //accounts setup
         accounts = await ethers.getSigners()
         deployer = accounts[0]
-        user = accounts[1] //need to bring in another private key if i do on an actual testnet. should be fine on ganache though
+        user = accounts[1] 
         
         //Token Contract deploy
         const mockTokenContractFactory = await hre.ethers.getContractFactory('MockToken');
@@ -34,13 +34,12 @@ describe("Mock Token Unit Tests", () => {
         //give the user account some tokens to work with
         mockToken.transfer(user.address,420420);
         //Token Approval
-        await userMockToken.approve(mockStaking.address,69420420420); //just setting approval to maximum supply for now
+        await userMockToken.approve(mockStaking.address,69420420420); //setting approval to maximum supply
     })
     describe('MockToken Contract', () => {
         describe('Constructor', () => {
             it('Correctly sets initial supply', async () => {
                 //assume setting intial supply to 69420420 in deployment script
-                //might need to alter number for decimals, not sure
                 const expectedInitialSupply = 69420420;
                 const intialSupply = await mockToken.getInitialSupply();
                 assert.equal(expectedInitialSupply, initialSupply);
@@ -89,7 +88,7 @@ describe("Mock Token Unit Tests", () => {
             it('correctly updates circulating supply when tokens are minted', async () => {
                 const initialSupply = await mockToken.getInitialSupply();
                 const newMintAmount = 69420;
-                const expectedTotalSupply = parseInt(initialSupply) + newMintAmount; //apparently initialSupply was being returned as a string, so had to convert to Int
+                const expectedTotalSupply = parseInt(initialSupply) + newMintAmount; 
                 const tx = await mockToken.mint(user.address,newMintAmount);
                 await tx.wait(1);
                 const totalSupply = await mockToken.getCurrentSupply();
@@ -99,14 +98,14 @@ describe("Mock Token Unit Tests", () => {
         describe('getter functions', () => {
             describe('getMaxSupply', () => {
                 it('returns the correct MAX_SUPPLY', async () => {
-                    const expectedMaxSupply = 69420420420; //decimals?
+                    const expectedMaxSupply = 69420420420; 
                     const maxSupply = await mockToken.getMaxSupply();
                     assert.equal(expectedMaxSupply, maxSupply);
                 })
             })
             describe('getInitialSupply', () => {
                 it('returns the correct INITIAL_SUPPLY', async () => {
-                    const expectedInitialSupply = 69420420; //decimals?
+                    const expectedInitialSupply = 69420420; 
                     const initialSupply = await mockToken.getInitialSupply();
                     assert.equal(expectedInitialSupply, initialSupply);
                 })
@@ -120,7 +119,7 @@ describe("Mock Token Unit Tests", () => {
                 it('returns the correct totalSupply after additional tokens are minted', async () => {
                     const initialSupply = await mockToken.getInitialSupply();
                     const newMintAmount = 69420;
-                    const expectedTotalSupply = parseInt(initialSupply) + newMintAmount; //apparently initialSupply was being returned as a string, so had to convert to Int
+                    const expectedTotalSupply = parseInt(initialSupply) + newMintAmount; 
                     const tx = await mockToken.mint(user.address,newMintAmount);
                     await tx.wait(1);
                     const totalSupply = await mockToken.getCurrentSupply();
@@ -223,7 +222,7 @@ describe("Mock Token Unit Tests", () => {
     describe('MockStaking Contract', () => {
         beforeEach(async () => {
             const expectedOwner = mockStaking.address;
-            const tx = await mockToken.transferOwnership(mockStaking.address); //might want mockStakingContract.address, not sure
+            const tx = await mockToken.transferOwnership(mockStaking.address); 
             await tx.wait(1);
             const owner = await mockToken.getOwner();
             assert.equal(expectedOwner, owner);
@@ -466,7 +465,7 @@ describe("Mock Token Unit Tests", () => {
                 //give the user account some tokens to work with
                 maxToken.transfer(user.address,420420);
                 //Token Approval
-                await userMaxToken.approve(maxStaking.address,69420420420); //just setting approval to maximum supply for now
+                await userMaxToken.approve(maxStaking.address,69420420420); 
 
                 //get initial rewards
                 const expectedRewards = (await userMaxStaking.earned(user.address)).toNumber();
@@ -480,7 +479,7 @@ describe("Mock Token Unit Tests", () => {
                 await network.provider.send("evm_mine"); 
                 await tx.wait(1);
 
-                //get final rewards - should be zero since no rewards can be dispursed for this contract
+                //get final rewards - should be zero since no rewards can be disbursed for this contract
                 const rewards = (await userMaxStaking.earned(user.address)).toNumber();
 
                 assert.equal(expectedRewards, rewards);
@@ -508,7 +507,7 @@ describe("Mock Token Unit Tests", () => {
                 //give the user account some tokens to work with
                 maxToken.transfer(user.address,420420);
                 //Token Approval
-                await userMaxToken.approve(maxStaking.address,69420420420); //just setting approval to maximum supply for now
+                await userMaxToken.approve(maxStaking.address,69420420420); 
 
                 //get initial rewards
                 const expectedRewards = (await userMaxStaking.earned(user.address)).toNumber();
@@ -587,12 +586,7 @@ describe("Mock Token Unit Tests", () => {
                  const finalUserBalance = (await userMockToken.getBalance()).toNumber();
                  assert.notEqual(initialUserBalance, finalUserBalance);
             })
-            it('is not vulnerable to reentrancy', async () => {
-                //for this one just try to do a reentrant attack - create a whole new contract
-                //deploy it and just show that it cant reentrantly attack the claim function
-                // I will need to send tokens and eth to the contract and approve token spend,
-                // stake and let it accumulate rewards so it has something to claim
-                
+            it('is not vulnerable to reentrancy', async () => {              
                 //deploy reentrant attacker contract
                 const reentrantContractFactory = await hre.ethers.getContractFactory('Reentrant');
                 const reentrantContract = await reentrantContractFactory.deploy(mockStaking.address, mockToken.address); 

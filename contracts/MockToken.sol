@@ -19,7 +19,7 @@ contract MockToken is ERC20, Ownable {
     constructor(uint256 _initialSupply) ERC20("MockToken", "MOCK") {
         INITIAL_SUPPLY = _initialSupply;
         
-        _mint(msg.sender, INITIAL_SUPPLY); //mints initial supply to this contract address
+        _mint(msg.sender, INITIAL_SUPPLY); //mints initial supply to deployer
 
         circulatingSupply = totalSupply(); 
     }

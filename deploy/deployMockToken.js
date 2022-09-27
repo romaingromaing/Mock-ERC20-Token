@@ -18,7 +18,7 @@ const main = async () => {
     //   await verify(tokenContract.address, args);
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     const stakingContractFactory = await hre.ethers.getContractFactory('MockStaking');
-    const initialRewardRate = 69; //for constructor, not sure on the actual value right now
+    const initialRewardRate = 69; 
     const stakingContract = await stakingContractFactory.deploy(tokenAddress, initialRewardRate); //pass in constructor args as deploy params
     await stakingContract.deployed();
     console.log("Staking contract deployed to:", stakingContract.address);
