@@ -41,7 +41,7 @@ describe("Mock Token Unit Tests", () => {
             it('Correctly sets initial supply', async () => {
                 //assume setting intial supply to 69420420 in deployment script
                 const expectedInitialSupply = 69420420;
-                const intialSupply = await mockToken.getInitialSupply();
+                const initialSupply = await mockToken.getInitialSupply();
                 assert.equal(expectedInitialSupply, initialSupply);
             }) 
             it('mints initial supply to the deployer', async () => {
@@ -50,7 +50,7 @@ describe("Mock Token Unit Tests", () => {
                 assert.equal(initialSupply, deployerBalance);
             })
             it('Correctly sets circulating supply to initial supply', async () => {
-                const intialSupply = await mockToken.getInitialSupply();
+                const initialSupply = await mockToken.getInitialSupply();
                 const circulatingSupply = await mockToken.getCirculatingSupply();
                 assert.equal(initialSupply, circulatingSupply);
             })
