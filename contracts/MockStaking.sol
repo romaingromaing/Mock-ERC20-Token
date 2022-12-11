@@ -3,11 +3,13 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IMockToken.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract MockStaking is Ownable {
+    using SafeERC20 for IERC20;
     //Token vars
-
     IMockToken public immutable mockToken; //IMockToken interface also includes all ERC20 events/functions
     address public immutable mockTokenAddress; 
     
@@ -29,6 +31,10 @@ contract MockStaking is Ownable {
     //depositor address => staked amount
     mapping(address => uint256) private balances;
 
+    event tokensStaked(uint256 amount);
+    event tokensWithdrawn(uint256 amount);
+    event rewardRateChanged(uint256 newRate);
+    
     constructor(address _mockTokenAddress, uint256 initialRewardRate) {
         mockTokenAddress = _mockTokenAddress;
         mockToken = IMockToken(mockTokenAddress);
@@ -53,9 +59,10 @@ contract MockStaking is Ownable {
     function stake(uint _amount) external updateReward(msg.sender) {
         require(_amount > 0, "Amount must be greater than zero");
         require(mockToken.allowance(msg.sender,address(this)) >= _amount, "Token approval must be greater than desired stake amount");
-        mockToken.transferFrom(msg.sender, address(this), _amount);
+        IERC20(mockTokenAddress).safeTransferFrom(msg.sender, address(this), _amount);
         balances[msg.sender] += _amount;
         totalStaked += _amount; 
+        emit tokensStaked(_amount);
         mockToken.updateCirculatingSupply();
     }
 
@@ -64,7 +71,8 @@ contract MockStaking is Ownable {
         require(_amount > 0, "Amount must be greater than zero");
         balances[msg.sender] -= _amount;
         totalStaked -= _amount;
-        mockToken.transfer(msg.sender, _amount); 
+        IERC20(mockTokenAddress).safeTransfer(msg.sender, _amount); 
+        emit tokensWithdrawn(_amount);
         mockToken.updateCirculatingSupply();
     }
 
@@ -86,7 +94,7 @@ contract MockStaking is Ownable {
      * that accumulated rewards have already been accounted for. 
      * 
      * So (calcRewardPerToken() - userRewardPerTokenPaid) represents the proportion of
-     * accumualted rewards that have NOT been accounted for within the user's account */
+     * accumulated rewards that have NOT been accounted for within the user's account */
     function earned(address _account) public view returns (uint256) {
         //mechanism to stop reward accrual if maxSupply is reached
         if(mockToken.totalSupply() <  maxSupply) {
@@ -112,9 +120,10 @@ contract MockStaking is Ownable {
     }
 
     //Contract owner can change the reward rate
-    function setRewardRate(uint256 newRewardRate) public onlyOwner {
+    function setRewardRate(uint256 newRewardRate) external onlyOwner {
         require(newRewardRate > 0, "New reward rate must be greater than zero");
         rewardRate = newRewardRate;
+        emit rewardRateChanged(newRewardRate);
     }
 
 
@@ -124,15 +133,15 @@ contract MockStaking is Ownable {
     // Getter Funcitons //
     //////////////////////
 
-    function getBalance() public view returns (uint256) {
+    function getBalance() external view returns (uint256) {
         return balances[msg.sender];
     }
 
-    function getTotalStaked() public view returns(uint256) {
+    function getTotalStaked() external view returns(uint256) {
         return totalStaked;
     }
     
-    function getRewards() public view returns (uint256) {
+    function getRewards() external view returns (uint256) {
         return rewards[msg.sender];
     }
 }

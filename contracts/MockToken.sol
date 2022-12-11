@@ -24,7 +24,7 @@ contract MockToken is ERC20, Ownable {
         circulatingSupply = totalSupply(); 
     }
 
-    function mint(address to, uint256 amount) public onlyOwner {
+    function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount); 
         updateCirculatingSupply();
     }
@@ -33,7 +33,7 @@ contract MockToken is ERC20, Ownable {
         circulatingSupply = getCurrentSupply() - balanceOf(stakingAddress);
     }
 
-    function setStakingAddress(address _stakingAddress) public onlyOwner {
+    function setStakingAddress(address _stakingAddress) external onlyOwner {
         stakingAddress = _stakingAddress;
     } //this will only be called once - directly BEFORE ownership is transferred to the staking address;
 
@@ -42,11 +42,11 @@ contract MockToken is ERC20, Ownable {
     // Getter Funcitons //
     //////////////////////
 
-    function getMaxSupply() public pure returns (uint256) {
+    function getMaxSupply() external pure returns (uint256) {
         return MAX_SUPPLY;
     }
 
-    function getInitialSupply() public view returns (uint256) {
+    function getInitialSupply() external view returns (uint256) {
         return INITIAL_SUPPLY;
     }
 
@@ -54,15 +54,15 @@ contract MockToken is ERC20, Ownable {
         return totalSupply();
     }
 
-    function getCirculatingSupply() public view returns (uint256) { 
+    function getCirculatingSupply() external view returns (uint256) { 
         return circulatingSupply;
     }
 
-    function getStakedSupply() public view returns (uint256) {
+    function getStakedSupply() external view returns (uint256) {
         return balanceOf(stakingAddress);
     }
 
-    function getOwner() public view returns (address) {
+    function getOwner() external view returns (address) {
         return owner();
     } /* 
        * I want to have the deployer transfer ownership to the staking contract
@@ -72,7 +72,7 @@ contract MockToken is ERC20, Ownable {
        * This function can be used to verify that ownership has been transferred
        */
     
-    function getBalance() public view returns (uint256) {
+    function getBalance() external view returns (uint256) {
         return balanceOf(msg.sender);
     }
 }
